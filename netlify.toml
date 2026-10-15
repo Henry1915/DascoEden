@@ -1,0 +1,60 @@
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/about"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/academics"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/campus-life"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/staff"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/news-events"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admissions"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/contact"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/parents"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/teachers"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/admin"
+  to = "/index.html"
+  status = 200
