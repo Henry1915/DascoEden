@@ -185,6 +185,7 @@ footer .logo{color:#fff;margin-bottom:10px}
 .dslot b{font-size:.92rem}.dslot input[type=file]{padding:8px;font-size:.9rem}
 .dslot .st{font-size:.8rem;color:var(--mute)}.dslot .st.ok{color:#1d6b2a;font-weight:700}.dslot .st.bad{color:#a11d1d;font-weight:700}
 #apply .lab{font-size:.88rem;color:var(--ink);font-weight:600}
+.mrow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.mthumb{width:84px;height:60px;object-fit:cover;border-radius:8px;background:#2b0a14;flex:none}
 /* admin / parent */
 .chip{display:inline-block;font-size:.75rem;font-weight:700;padding:3px 10px;border-radius:99px;border:1px solid transparent}
 .chip.P{background:#e3f3e5;color:#1d6b2a;border-color:#bfe0c5}.chip.A{background:#fbe3e3;color:#a11d1d;border-color:#f1bcbc}.chip.L{background:#fff1c9;color:#8a5a00;border-color:#eed48a}

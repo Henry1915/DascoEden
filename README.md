@@ -85,13 +85,17 @@ Turn it on:
 
 Safeguards built in: each visitor connection is limited to 20 questions per 10 minutes, questions and answers are short, and the key never reaches the browser. Cost depends on how many people use it; check Anthropic's pricing page and watch your usage. If the default model name is rejected, set `ANTHROPIC_MODEL` to a model listed in your Anthropic console.
 
-## Campus videos (Campus Life page)
-The Campus Life page has a video gallery of up to 20 videos.
-- It ships with 6 of the school's videos, chosen and compressed to fit Netlify drag-and-drop (every file under 10 MB, about 27 MB in total; five are 1280 pixels wide and the longest is 960 pixels wide) in `public/assets/videos/video-01.mp4` to `video-06.mp4`, with preview pictures. Admin > Videos > "Load the 6 school videos to edit" lets you rename, remove or add to them. Once you save your own list, it replaces the built-in one.
-- Admin > **Videos**: enter a title and a link, then **Add video**. Links can be YouTube, Facebook (public videos), Vimeo, or a direct `.mp4` / `.webm` link.
-- Videos load only when tapped, so the page stays fast. YouTube links use the privacy-friendly player.
-- To use your own file, place it in `public/assets/videos/` (see the README.txt there), redeploy, then add it with the link `assets/videos/yourfile.mp4`.
-- Only `https://` links or `assets/videos/...` files are accepted.
+## Campus Life photos and videos (Admin > Campus media)
+The Campus Life page shows a photo gallery and a video grid, both managed from **Admin > Campus media**, with no links to paste.
+- **Upload:** choose photos and videos from your phone or computer (several at once) and press **Upload**. Photos: JPG, PNG or WebP (large photos are shrunk in the browser). Videos: MP4, WebM or MOV, up to 60 MB each. A preview picture is made from each video automatically. Titles are filled in from the file name; rename them below the upload box.
+- **Manage:** change a title, move items up or down, choose the crop (centre, top or bottom, useful for portrait photos) or delete an item.
+- **Long videos:** use "Add a YouTube, Facebook or Vimeo link instead" for anything over 60 MB.
+- **Built-in items:** the site ships with 13 photos (in `public/assets/` and `public/assets/gallery/`) and 6 videos (in `public/assets/videos/`). They show until you save your own list. To keep, rename or remove them, press "Load the built-in photos and videos into the list" first. Uploading anything also replaces the built-ins.
+- **How it works:** uploaded files are stored in Netlify Blobs and served from `/api/media/...`. Big videos are uploaded in 3.5 MB pieces (a Netlify function accepts at most about 6 MB per request) and served in 4.5 MB pieces, so they start quickly and you can skip around. Only people signed in as admin can upload or delete.
+- **Checks:** the file type is read from the file's contents, not its name. A photo sent as a video (or the reverse) is refused.
+- **Limits:** up to 400 files and 500 MB in total. The JSON backup contains the list of items but not the uploaded files themselves, so keep the originals.
+- **Videos taken on an iPhone** may be HEVC-encoded; Chrome on Windows may not play them. Choose "Most Compatible" in the iPhone camera settings, or upload from a phone that records H.264 MP4.
+- Photos of children on a public website need the parents' consent.
 
 ## Attendance and notifications
 1. Admin > **Attendance**: pick a date and class, mark each learner Present / Absent / Late, then **Save attendance**.
@@ -130,4 +134,4 @@ Automatic SMS or WhatsApp Business sending is not included. It needs a paid prov
 - Student data is personal data. Check your local data-protection rules (for Ghana, the Data Protection Act, 2012) before storing real records.
 
 ## School details used on the site
-Taken from the school's public Google listing and YouTube channel: location (Mamponteng, Kwabre East District, Kumasi), phone +233 24 255 4403, the map pin and the GES + Cambridge curricula. The default WhatsApp number is that same phone; change it in Admin > Settings if the school uses a different WhatsApp number. Email address, opening hours, fees, staff names, learner numbers and results were not found, so anything about those on the site is still sample text.
+Taken from the school's public Google listing and YouTube channel: location (Mamponteng, Kwabre East District, Kumasi), phone +233 24 255 4403, the map pin and the Oxford curriculum (updated by the school: it is five years old and works with Oxford University Press). The default WhatsApp number is that same phone; change it in Admin > Settings if the school uses a different WhatsApp number. Email address, opening hours, fees, staff names, learner numbers and results were not found, so anything about those on the site is still sample text.

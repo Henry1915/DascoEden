@@ -7,6 +7,7 @@ export const config = { path: "/api/*" };
 
 const store = () => getStore("dasco-eden");
 const docsStore = () => getStore("dasco-eden-docs");
+const mediaStore = () => getStore("dasco-eden-media");
 const SECRET = () => process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "change-me";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const json = (d, s = 200) =>
@@ -94,6 +95,32 @@ const totpOk = (secret, code) => {
   return ok;
 };
 
+// ---------- campus media (photos and videos uploaded by the admin) ----------
+const MEDIA_CHUNK = 3500000; // the browser slices files into 3.5 MB pieces (a function request may not exceed 6 MB)
+const MAX_VIDEO = 60 * 1024 * 1024, MAX_IMAGE = 10 * 1024 * 1024, MAX_MEDIA_TOTAL = 500 * 1024 * 1024;
+const getMedia = async () => {
+  const m = (await store().get("media", { type: "json" })) || {};
+  return { files: m.files || {}, pending: m.pending || {}, items: m.items || [] };
+};
+const saveMedia = (m) => store().setJSON("media", m);
+// What a file really is is decided by its first bytes, never by its name.
+function sniffMedia(buf) {
+  const b = new Uint8Array(buf.slice(0, 16));
+  if (b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return "image/jpeg";
+  if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) return "image/png";
+  if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) return "image/webp";
+  if (b[4] === 0x66 && b[5] === 0x74 && b[6] === 0x79 && b[7] === 0x70) return String.fromCharCode(b[8], b[9], b[10], b[11]) === "qt  " ? "video/quicktime" : "video/mp4";
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return "video/webm";
+  return "";
+}
+const okMediaSrc = (s, kind) =>
+  /^m:[0-9a-f]{12}$/.test(s) ||
+  (/^assets\/[\w .\-\/]+\.(jpg|jpeg|png|webp|mp4|webm)$/i.test(s) && !s.includes("..")) ||
+  (kind === "video" && /^https:\/\//i.test(s));
+async function dropMediaFile(id, f) {
+  for (let i = 0; i < (f.chunks || 0); i++) { try { await mediaStore().delete(`${id}/${i}`); } catch {} }
+}
+
 // ---------- data ----------
 const DEF = { announcements: [], events: [], staff: [], videos: [], settings: { wa: "", pay: "" } };
 const okPoster = (u) => /^assets\/videos\/[\w .\-]+\.(jpg|jpeg|png|webp)$/i.test(u);
@@ -174,7 +201,7 @@ async function rateOk(req, scope, max, windowMs) {
 
 // ---------- AI assistant (optional) ----------
 const SCHOOL_FACTS = `You are Dasco Eden AI, the friendly assistant on the website of Dasco Eden International School, a school at Mamponteng in the Kwabre East District of Kumasi, Ashanti Region, Ghana. The school's motto is "A Holistic School".
-Verified facts: the school runs both the Ghana Education Service (GES) and Cambridge curricula. Phone: +233 24 255 4403. The campus has modern buildings, a football goal and basketball court, a sick bay with a school nurse, and the school holds cultural celebrations with dance, drumming and a school band; it has also hosted visits such as the fire service. The school has a YouTube channel. Visitors can get directions from the Contact page.
+Verified facts: the school is about five years old and follows the Oxford curriculum, in partnership with Oxford University Press (this is printed on the school bus). Learners have keyboard music lessons, a computer lab and an early years classroom. Phone: +233 24 255 4403. The campus has modern buildings, a football goal and basketball court, a sick bay with a school nurse, and the school holds cultural celebrations with dance, drumming and a school band; it has also hosted visits such as the fire service. The school has a YouTube channel. Visitors can get directions from the Contact page.
 Do NOT invent anything else. You do not know fees, ages admitted, class sizes, results, term dates, opening hours or staff names unless the office information below says so. For those questions, say you are not sure and suggest calling +233 24 255 4403 or using the Admissions page. Keep answers short, friendly and in simple English.`;
 
 async function chat(req) {
@@ -298,7 +325,39 @@ export default async (req) => {
   try {
     if (route === "public" && method === "GET") {
       const p = await getPub();
-      return json({ ...p, ai: !!process.env.ANTHROPIC_API_KEY, twofa: !!process.env.ADMIN_TOTP_SECRET });
+      const media = (await getMedia()).items;
+      return json({ ...p, media, ai: !!process.env.ANTHROPIC_API_KEY, twofa: !!process.env.ADMIN_TOTP_SECRET });
+    }
+
+    // Public: serve an uploaded photo or video, with Range support so videos can start and skip around.
+    if (route.startsWith("media/") && method === "GET") {
+      const id = route.slice(6);
+      if (!/^[0-9a-f]{12}$/.test(id)) return json({ error: "Not found" }, 404);
+      const f = (await getMedia()).files[id];
+      if (!f) return json({ error: "Not found" }, 404);
+      const total = f.size, CH = f.chunkSize, CAP = 4500000;
+      let start = 0, end = total - 1, partial = false;
+      const rg = req.headers.get("range");
+      if (rg) {
+        const mm = /^bytes=(\d*)-(\d*)$/.exec(rg.trim());
+        if (!mm || (mm[1] === "" && mm[2] === "")) return new Response(null, { status: 416, headers: { "content-range": `bytes */${total}` } });
+        if (mm[1] === "") start = Math.max(0, total - +mm[2]);
+        else { start = +mm[1]; if (mm[2] !== "") end = Math.min(+mm[2], total - 1); }
+        if (start >= total || start > end) return new Response(null, { status: 416, headers: { "content-range": `bytes */${total}` } });
+        partial = true;
+      }
+      if (end - start + 1 > CAP) { end = start + CAP - 1; partial = true; } // a function response may not exceed ~6 MB
+      const parts = [];
+      for (let i = Math.floor(start / CH); i <= Math.floor(end / CH); i++) {
+        const raw = await mediaStore().get(`${id}/${i}`, { type: "arrayBuffer" });
+        if (!raw) return json({ error: "File is incomplete" }, 404);
+        const buf = Buffer.from(raw), cs = i * CH;
+        parts.push(buf.subarray(Math.max(start, cs) - cs, Math.min(end, cs + buf.length - 1) - cs + 1));
+      }
+      const out = Buffer.concat(parts);
+      const headers = { "content-type": f.type, "accept-ranges": "bytes", "content-length": String(out.length), "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" };
+      if (partial) headers["content-range"] = `bytes ${start}-${end}/${total}`;
+      return new Response(out, { status: partial ? 206 : 200, headers });
     }
 
     if (route === "admin/login" && method === "POST") {
@@ -327,7 +386,7 @@ export default async (req) => {
         const cutoff = isoDay(Date.now() - 45 * 864e5);
         const days = Object.fromEntries(Object.entries(att.days).filter(([d]) => d >= cutoff));
         const teachers = (await getTeachers()).list.map(({ codeHash, ...x }) => x);
-        return json({ public: await getPub(), parents, applications: await getApps(), attendance: days, teachers });
+        return json({ public: await getPub(), parents, applications: await getApps(), attendance: days, teachers, media: (await getMedia()).items });
       }
       if (route === "admin/save" && method === "POST") {
         const b = await body();
@@ -379,6 +438,83 @@ export default async (req) => {
         }
         await store().setJSON("applications", apps.filter((x) => x.id !== a.id));
         return json({ ok: true });
+      }
+      // ----- campus media upload: start -> chunks -> finish, then media-set puts it in the Campus Life list -----
+      if (route === "admin/media-start" && method === "POST") {
+        const b = await body();
+        const kind = ["image", "video", "poster"].includes(b.kind) ? b.kind : "";
+        const size = Math.floor(+b.size || 0);
+        if (!kind || size < 1) return json({ error: "Bad upload request" }, 400);
+        if (kind === "video" ? size > MAX_VIDEO : size > MAX_IMAGE) return json({ error: kind === "video" ? "Videos can be up to 60 MB. Use a shorter or smaller video, or add a YouTube link." : "Photos can be up to 10 MB." }, 413);
+        const chunks = Math.ceil(size / MEDIA_CHUNK);
+        if (+b.chunks !== chunks) return json({ error: "Bad upload request" }, 400);
+        const m = await getMedia();
+        const now = Date.now();
+        for (const [pid, p] of Object.entries(m.pending)) if (now - p.at > 6 * 3600e3) { await dropMediaFile(pid, p); delete m.pending[pid]; }
+        const used = Object.values(m.files).reduce((n, x) => n + x.size, 0);
+        if (used + size > MAX_MEDIA_TOTAL || Object.keys(m.files).length >= 400) return json({ error: "The media library is full. Delete something first." }, 413);
+        const id = crypto.randomBytes(6).toString("hex");
+        m.pending[id] = { kind, size, chunks, got: {}, type: "", at: now };
+        await saveMedia(m);
+        return json({ id, chunkSize: MEDIA_CHUNK });
+      }
+      if (route === "admin/media-chunk" && method === "POST") {
+        const u = new URL(req.url);
+        const id = u.searchParams.get("id") || "", n = Number(u.searchParams.get("n"));
+        if (+(req.headers.get("content-length") || 0) > 3900000) return json({ error: "Chunk too large" }, 413);
+        const m = await getMedia();
+        const p = m.pending[id];
+        if (!p || !Number.isInteger(n) || n < 0 || n >= p.chunks) return json({ error: "Unknown upload" }, 400);
+        const buf = await req.arrayBuffer();
+        const expect = n === p.chunks - 1 ? p.size - (p.chunks - 1) * MEDIA_CHUNK : MEDIA_CHUNK;
+        if (buf.byteLength !== expect) return json({ error: "Chunk has the wrong size" }, 400);
+        if (n === 0) {
+          const type = sniffMedia(buf);
+          const ok = p.kind === "video" ? type.startsWith("video/") : type.startsWith("image/");
+          if (!ok) return json({ error: p.kind === "video" ? "That isn't a video file (use MP4, WebM or MOV)." : "That isn't a JPG, PNG or WebP photo." }, 400);
+          p.type = type;
+        }
+        await mediaStore().set(`${id}/${n}`, buf);
+        p.got[n] = buf.byteLength;
+        await saveMedia(m);
+        return json({ ok: true });
+      }
+      if (route === "admin/media-finish" && method === "POST") {
+        const b = await body();
+        const id = str(b.id, 20);
+        const m = await getMedia();
+        const p = m.pending[id];
+        if (!p) return json({ error: "Unknown upload" }, 400);
+        let sum = 0;
+        for (let i = 0; i < p.chunks; i++) { if (!p.got[i]) return json({ error: "Some parts did not arrive. Please try again." }, 400); sum += p.got[i]; }
+        if (sum !== p.size || !p.type) return json({ error: "The upload is incomplete. Please try again." }, 400);
+        m.files[id] = { kind: p.kind, type: p.type, size: p.size, chunks: p.chunks, chunkSize: MEDIA_CHUNK, at: Date.now() };
+        delete m.pending[id];
+        await saveMedia(m);
+        return json({ id, type: p.type });
+      }
+      if (route === "admin/media-set" && method === "POST") {
+        const b = await body();
+        const m = await getMedia();
+        const items = (Array.isArray(b.items) ? b.items : []).slice(0, 200).map((x) => ({
+          id: str(x.id, 40), title: str(x.title, 100), kind: x.kind === "video" ? "video" : "image",
+          src: str(x.src, 300).trim(), poster: str(x.poster, 300).trim(), pos: /^\d{1,3}% \d{1,3}%$/.test(x.pos || "") ? x.pos : "",
+        })).filter((x) => {
+          if (!x.id || !okMediaSrc(x.src, x.kind)) return false;
+          if (x.kind === "image" && /^https:/i.test(x.src)) return false;
+          if (x.src.startsWith("m:")) { const f = m.files[x.src.slice(2)]; if (!f || f.kind !== x.kind) return false; }
+          if (x.poster) { if (!okMediaSrc(x.poster, "image") || /^https:/i.test(x.poster)) return false; if (x.poster.startsWith("m:") && !m.files[x.poster.slice(2)]) return false; }
+          return true;
+        });
+        const used = new Set();
+        for (const x of items) { if (x.src.startsWith("m:")) used.add(x.src.slice(2)); if (x.poster.startsWith("m:")) used.add(x.poster.slice(2)); }
+        const now = Date.now();
+        for (const [fid, f] of Object.entries(m.files)) {
+          if (!used.has(fid) && now - f.at > 3600e3) { await dropMediaFile(fid, f); delete m.files[fid]; } // files uploaded in the last hour are kept in case an upload is still in progress
+        }
+        m.items = items;
+        await saveMedia(m);
+        return json({ ok: true, items });
       }
       if (route === "admin/doc" && method === "GET") {
         const u = new URL(req.url);

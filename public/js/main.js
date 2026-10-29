@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const IMG={sick:"assets/sickbay.jpg",sport:"assets/sports-facilities.jpg",cult:"assets/culture.jpg",campus:"assets/campus.jpg",lab:"assets/science-lab.jpg",foot:"assets/football.jpg"};
+const IMG={cult:"assets/culture.jpg",campus:"assets/campus.jpg",lab:"assets/science-lab.jpg"};
 document.querySelectorAll("[data-img]").forEach(i=>i.src=IMG[i.dataset.img]);
 $("yr").textContent=new Date().getFullYear();
 $("menu").onclick=()=>$("nav").classList.toggle("open");
@@ -15,9 +15,9 @@ const PATHS={home:"/",about:"/about",academics:"/academics",campus:"/campus-life
 const NOURL=!!window.NO_URL_ROUTING||location.protocol==="file:";
 const SITE="Dasco Eden International School";
 const SEO={
- home:[SITE+" | A Holistic School in Kumasi, Ghana","Dasco Eden International School, Mamponteng, Kwabre East, Kumasi. GES and Cambridge curricula. Apply online."],
- about:["About us | "+SITE,"Learn about Dasco Eden International School, an ultra-modern school at Mamponteng, Kumasi, running GES and Cambridge curricula."],
- academics:["Academics | "+SITE,"Programs, facilities and learning at Dasco Eden International School in Kumasi, following the GES and Cambridge curricula."],
+ home:[SITE+" | A Holistic School in Kumasi, Ghana","Dasco Eden International School, Mamponteng, Kwabre East, Kumasi. Oxford curriculum, in partnership with Oxford University Press. Apply online."],
+ about:["About us | "+SITE,"Learn about Dasco Eden International School, an ultra-modern school at Mamponteng, Kumasi, following the Oxford curriculum."],
+ academics:["Academics | "+SITE,"Programs, facilities and learning at Dasco Eden International School in Kumasi, following the Oxford curriculum."],
  campus:["Campus life | "+SITE,"Photos and videos of cultural celebrations, sports facilities, the sick bay and campus life at Dasco Eden International School."],
  staff:["Our staff | "+SITE,"Meet the teachers and staff of Dasco Eden International School."],
  news:["News and events | "+SITE,"Latest announcements and upcoming events at Dasco Eden International School."],
@@ -95,8 +95,8 @@ const h=(t,a,...k)=>{const e=document.createElement(t);for(const x in a||{}){if(
 // the admin session lives in sessionStorage, so closing the tab signs you out
 const bk=k=>k==="rc_admin"||k==="rc_teacher"?sessionStorage:localStorage;
 const S={get:k=>{try{return bk(k).getItem(k)||""}catch(e){return ""}},set:(k,v)=>{try{v?bk(k).setItem(k,v):bk(k).removeItem(k)}catch(e){}}};
-let PUB={announcements:[],events:[],staff:[],videos:[],settings:{}},SET={wa:"233242554403",pay:"Please contact the school office for payment details."},
- ANN=[],EV=[],APPS=[],PARENTS=[],ATT={},VID=[],TEACHERS=[],MYDOC=null,AI=false,TWOFA=false,lastCode=null,openKid=null,admLoaded=false;
+let PUB={announcements:[],events:[],staff:[],media:[],settings:{}},SET={wa:"233242554403",pay:"Please contact the school office for payment details."},
+ ANN=[],EV=[],APPS=[],PARENTS=[],ATT={},MEDIA=[],TEACHERS=[],MYDOC=null,AI=false,TWOFA=false,lastCode=null,openKid=null,admLoaded=false;
 const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36);
 const CC="233"; // country code used to turn local numbers like 024... into WhatsApp links
 const waNum=p=>{let d=String(p||"").replace(/\D/g,"");if(d.startsWith("00"))d=d.slice(2);else if(d.startsWith("0"))d=CC+d.slice(1);return d};
@@ -120,12 +120,12 @@ function delBtn(fn){const b=h("button",{class:"btn o"},"Delete");let armed=0;
 
 // public content
 function apply(){
-  PUB.videos=PUB.videos||[];VID=PUB.videos;renderVideos();
+  PUB.media=PUB.media||[];MEDIA=PUB.media;renderGallery();renderVideos();
   ANN=PUB.announcements.slice().sort((a,b)=>b.at-a.at);EV=PUB.events;
   STAFF=PUB.staff;
   SET={wa:(PUB.settings&&PUB.settings.wa)||"233242554403",pay:(PUB.settings&&PUB.settings.pay)||"Please contact the school office for payment details."};
   renderNews();renderEvents();srender();$("aiBtn").classList.toggle("hidden",!AI)}
-async function loadPublic(){try{const d=await api("public");PUB={announcements:d.announcements||[],events:d.events||[],staff:d.staff||[],videos:d.videos||[],settings:d.settings||{}};AI=!!d.ai;TWOFA=!!d.twofa}catch(e){}apply();if($("p-admin").classList.contains("on")&&!S.get("rc_admin"))renderAdmin()}
+async function loadPublic(){try{const d=await api("public");PUB={announcements:d.announcements||[],events:d.events||[],staff:d.staff||[],media:d.media||[],settings:d.settings||{}};AI=!!d.ai;TWOFA=!!d.twofa}catch(e){}apply();if($("p-admin").classList.contains("on")&&!S.get("rc_admin"))renderAdmin()}
 function fill(el,items,empty){el.textContent="";if(!items.length&&empty){el.append(h("li",{class:"glass"},h("div",{style:"color:var(--mute)"},empty)));return}items.forEach(a=>el.append(h("li",{class:"glass"},h("div",{},a.text),h("small",{},new Date(a.at).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric"})))))}
 function renderNews(){const m="No announcements yet. Check back soon.";fill($("annList"),ANN,m);fill($("homeNews"),ANN.slice(0,3),m)}
 function renderEvents(){const t=new Date();t.setHours(0,0,0,0);
@@ -170,11 +170,11 @@ function renderParent(){const b=$("parentBody");b.textContent="";
     h("div",{class:"row"},h("a",{class:"btn",target:"_blank",rel:"noopener noreferrer",href:"https://wa.me/"+SET.wa+"?text="+encodeURIComponent("Hello, I'm "+(MYDOC.name||"a parent")+" ("+(kids[0]?kids[0].name:"")+"'s parent).")},"Message the school"))))}
 
 // admin dashboard
-const AT=["Overview","Parents & students","Attendance","Applications","Announcements","Events","Staff","Videos","Teachers","Data & backup","Settings"],STAT=["New","Contacted","Visited","Offered","Enrolled","Declined"],DEPT=["Leadership","Early Years","Primary","Junior High","Support"];
+const AT=["Overview","Parents & students","Attendance","Applications","Announcements","Events","Staff","Campus media","Teachers","Data & backup","Settings"],STAT=["New","Contacted","Visited","Offered","Enrolled","Declined"],DEPT=["Leadership","Early Years","Primary","Junior High","Support"];
 let at=0;
 const inp=(p,t)=>h("input",{placeholder:p,type:t||"text",maxLength:200}),lab=(t,e)=>h("label",{class:"lab"},t,e),num=v=>h("input",{type:"number",min:0,value:v}),
  sel=o=>h("select",{},o.map(x=>h("option",{},x))),msg=t=>h("div",{class:"glass card"},h("p",{style:"color:var(--ink)"},t));
-async function adminLoad(){const d=await api("admin/data",null,"rc_admin");PUB=d.public;PARENTS=d.parents;APPS=d.applications;ATT=d.attendance||{};TEACHERS=d.teachers||[];admLoaded=true;apply();setAdminLink();bump()}
+async function adminLoad(){const d=await api("admin/data",null,"rc_admin");PUB=d.public;PUB.media=d.media||[];PARENTS=d.parents;APPS=d.applications;ATT=d.attendance||{};TEACHERS=d.teachers||[];admLoaded=true;apply();setAdminLink();bump()}
 const savePub=async()=>{await api("admin/save",{key:"public",value:PUB},"rc_admin");apply();renderAdmin()},
  saveApps=async()=>{await api("admin/save",{key:"applications",value:APPS},"rc_admin");renderAdmin()},
  saveParents=async()=>{await api("admin/parents-save",{parents:PARENTS.map(p=>({id:p.id,name:p.name,phone:p.phone||"",children:p.children}))},"rc_admin");renderAdmin()};
@@ -189,7 +189,7 @@ function renderAdmin(){const t=$("atabs");t.textContent="";const b=$("adminBody"
   if(!admLoaded){b.append(h("p",{class:"note"},"Loading…"));adminLoad().then(renderAdmin).catch(e=>{S.set("rc_admin","");toast(e.message||"Couldn't load");renderAdmin()});return}
   AT.forEach((n,i)=>t.append(h("button",{class:i===at?"on":"",onclick:()=>{at=i;renderAdmin()}},n)));
   t.append(h("button",{onclick:()=>logout()},"Log out"));
-  [aOver,aParents,aAtt,aApps,aAnn,aEv,aStaff,aVid,aTeach,aData,aSet][at](b);restoreFocus()}
+  [aOver,aParents,aAtt,aApps,aAnn,aEv,aStaff,aMedia,aTeach,aData,aSet][at](b);restoreFocus()}
 function onPage(id){if(id==="admin")renderAdmin();if(id==="parent")renderParent();if(id==="teacher")renderTeacher()}
 const simpleRow=(text,del)=>h("div",{class:"glass card fr2",style:"margin-top:10px"},h("span",{},text),delBtn(del));
 
@@ -304,26 +304,101 @@ function playVideo(m,v,i){m.textContent="";m.onclick=null;m.style.cursor="defaul
   else if(i.k==="Vimeo")m.append(h("iframe",{src:"https://player.vimeo.com/video/"+i.id+"?autoplay=1",allow:A,allowFullscreen:true,title:v.title}));
   else if(i.k==="Facebook")m.append(h("iframe",{src:"https://www.facebook.com/plugins/video.php?show_text=false&autoplay=true&href="+encodeURIComponent(v.url),allow:A,allowFullscreen:true,title:v.title}));
   else m.append(h("video",{src:v.url,poster:v.poster||"",controls:true,autoplay:true,playsInline:true,preload:"auto"}))}
-function vCard(v,n){const i=v?vInfo(v.url):null,m=h("div",{class:"vm"});
+const mediaUrl=s=>!s?"":String(s).startsWith("m:")?"/api/media/"+String(s).slice(2):s;
+const DEF_PHOTOS=[
+ {title:"Sports court and campus",src:"assets/gallery/sports-court.jpg"},{title:"Cultural dance",src:"assets/culture.jpg"},
+ {title:"Our campus",src:"assets/campus.jpg"},{title:"Computer lab",src:"assets/gallery/ict-lab.jpg"},
+ {title:"Music lessons",src:"assets/gallery/music-lessons.jpg"},{title:"Early years classroom",src:"assets/gallery/early-years.jpg"},
+ {title:"Science laboratory",src:"assets/science-lab.jpg"},{title:"Sick bay and school nurse",src:"assets/sickbay.jpg",pos:"50% 39%"},
+ {title:"School bus",src:"assets/gallery/school-bus.jpg"},{title:"Clean washrooms",src:"assets/gallery/washrooms.jpg"},
+ {title:"Outdoor adventure: archery",src:"assets/gallery/archery.jpg",pos:"50% 42%"},
+ {title:"Outdoor adventure: harness check",src:"assets/gallery/adventure-harness.jpg",pos:"50% 42%"},
+ {title:"Outdoor adventure: climbing wall",src:"assets/gallery/climbing-wall.jpg",pos:"50% 25%"}];
+function vCard(v,n){const i=v?(v.file?{k:"Video file"}:vInfo(v.url)):null,m=h("div",{class:"vm"});
   if(i&&i.k==="YouTube")m.append(h("img",{src:"https://i.ytimg.com/vi/"+i.id+"/hqdefault.jpg",alt:"",loading:"lazy",onerror:function(){this.remove()}}));
   if(i&&v.poster&&i.k!=="YouTube")m.append(h("img",{src:v.poster,alt:"",loading:"lazy"}));
   m.append(h("span",{class:"play"},"▶"));
   if(i){m.append(h("span",{class:"lbl"},i.k==="Link"?"Opens in new tab":i.k));
     m.onclick=()=>{if(i.k==="Link")window.open(v.url,"_blank","noopener,noreferrer");else playVideo(m,v,i)}}
   return h("div",{class:"vc"+(v?"":" empty")},m,h("div",{class:"vt"},v?v.title:"Campus video "+n+": coming soon"))}
+function renderGallery(){const g=$("gallery");if(!g)return;g.textContent="";
+  const L=MEDIA.length?MEDIA.filter(x=>x.kind==="image"):DEF_PHOTOS;
+  if(!L.length){g.append(h("p",{class:"note"},"Photos coming soon."));return}
+  L.forEach(x=>{const src=mediaUrl(x.src),img=h("img",{src,alt:x.title,loading:"lazy"});if(x.pos)img.style.objectPosition=x.pos;
+    const f=h("figure",{},img,h("figcaption",{},x.title));f.onclick=()=>{$("lb").querySelector("img").src=src;$("lb").classList.add("on")};g.append(f)})}
 function renderVideos(){const g=$("vgrid");if(!g)return;g.textContent="";
-  const L=(VID.length?VID:DEF_VID).slice(0,20);L.forEach(v=>g.append(vCard(v)));
+  const L=(MEDIA.length?MEDIA.filter(x=>x.kind==="video").map(x=>({title:x.title,url:mediaUrl(x.src),poster:mediaUrl(x.poster),file:/^(m:|assets\/)/.test(x.src)})):DEF_VID).slice(0,40);
+  L.forEach(v=>g.append(vCard(v)));
   const sec=g.closest("section");if(sec)sec.classList.toggle("hidden",!L.length)}
-function aVid(b){const t=inp("Video title"),u=inp("Link (YouTube, Facebook, Vimeo or .mp4)");
-  b.append(h("div",{class:"glass card"},h("h3",{},"Campus videos ("+PUB.videos.length+" of 20)"),
-    h("p",{},"Paste a YouTube, Facebook or Vimeo link, or a direct .mp4 link. To use your own video file, put it in public/assets/videos/ and type assets/videos/yourfile.mp4. "+(DEF_VID.length?"Until you add one here, the Campus Life page shows the school's "+DEF_VID.length+" built-in videos. Adding your own list replaces them, so use the button below first if you want to keep and edit those.":"The Campus Life page shows these videos. If the list is empty the video section is hidden. Long videos are best uploaded to YouTube and added here as links.")),
-    PUB.videos.length||!DEF_VID.length?"":h("button",{class:"btn o",style:"margin-bottom:10px",onclick:()=>{PUB.videos=DEF_VID.map(v=>({...v,id:uid()}));w(savePub)}},"Load the 6 school videos to edit"),
-    h("div",{class:"fr"},t,u,h("button",{class:"btn",onclick:()=>{const v=u.value.trim();
-      if(PUB.videos.length>=20)return toast("You can add up to 20 videos");
-      if(!t.value.trim()||!v)return toast("Add a title and a link");
-      if(!/^https:\/\//i.test(v)&&!/^assets\/videos\/[\w .\-]+\.(mp4|webm)$/i.test(v))return toast("Use a full https:// link or assets/videos/name.mp4");
-      PUB.videos.push({id:uid(),title:t.value.trim(),url:v});w(savePub)}},"Add video"))));
-  PUB.videos.forEach((v,i)=>b.append(simpleRow((i+1)+". "+v.title+" · "+vInfo(v.url).k,()=>{PUB.videos=PUB.videos.filter(x=>x.id!==v.id);return savePub()})))}
+
+// ---------- admin: campus media (upload photos and videos) ----------
+const MEDIA_CHUNK=3500000,MAX_VIDEO_MB=60;
+const saveMediaList=async()=>{const r=await api("admin/media-set",{items:MEDIA},"rc_admin");MEDIA=r.items;PUB.media=MEDIA;apply();renderAdmin()};
+async function uploadFile(file,kind,onProg){
+  const size=file.size,chunks=Math.ceil(size/MEDIA_CHUNK),s=await api("admin/media-start",{kind,size,chunks},"rc_admin");
+  for(let i=0;i<chunks;i++){const part=file.slice(i*MEDIA_CHUNK,(i+1)*MEDIA_CHUNK);let ok=false,last;
+    for(let a=0;a<3&&!ok;a++){try{const r=await fetch("/api/admin/media-chunk?id="+s.id+"&n="+i,{method:"POST",headers:{authorization:"Bearer "+S.get("rc_admin"),"content-type":"application/octet-stream"},body:part});
+      if(r.ok)ok=true;else{let e={};try{e=await r.json()}catch(x){}last=new Error(e.error||"Upload failed");if(r.status<500&&r.status!==408)throw last}}catch(err){last=err;if(err.message&&!/fetch|network|load failed/i.test(err.message))throw err}
+      if(!ok)await new Promise(r=>setTimeout(r,800*(a+1)))}
+    if(!ok)throw last||new Error("Upload failed. Check your internet connection and try again.");
+    onProg&&onProg((i+1)/chunks)}
+  await api("admin/media-finish",{id:s.id},"rc_admin");return s.id}
+async function prepPhoto(file){
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type)&&!/\.(jpe?g|png|webp)$/i.test(file.name))throw new Error("“"+file.name+"” must be a JPG, PNG or WebP photo.");
+  try{const bmp=await createImageBitmap(file),max=1800,sc=Math.min(1,max/Math.max(bmp.width,bmp.height));
+    if(sc===1&&file.size<1.5*1048576)return file;
+    const c=document.createElement("canvas");c.width=Math.round(bmp.width*sc);c.height=Math.round(bmp.height*sc);c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",0.85));return blob&&blob.size<file.size?new File([blob],"photo.jpg",{type:"image/jpeg"}):file}catch(e){return file}}
+function makePoster(file){return new Promise(res=>{const v=document.createElement("video"),u=URL.createObjectURL(file);v.muted=true;v.playsInline=true;v.preload="metadata";
+  let t=setTimeout(()=>done(null),9000);const done=b=>{clearTimeout(t);URL.revokeObjectURL(u);res(b)};
+  v.onloadedmetadata=()=>{v.currentTime=Math.min(1.5,(v.duration||2)*0.3)};
+  v.onseeked=()=>{try{const w=Math.min(960,v.videoWidth),hh=Math.round(w*v.videoHeight/v.videoWidth),c=document.createElement("canvas");c.width=w;c.height=hh;c.getContext("2d").drawImage(v,0,0,w,hh);c.toBlob(b=>done(b),"image/jpeg",0.8)}catch(e){done(null)}};
+  v.onerror=()=>done(null);v.src=u})}
+const niceTitle=(n,fallback)=>{const s=n.replace(/\.[^.]+$/,"").replace(/[_-]+/g," ").trim();return /^whatsapp|^img |^vid |^\d+$/i.test(s)||!s?fallback:s.slice(0,100)};
+async function addFiles(files,say,prog){const added=[],failed=[];
+  for(let k=0;k<files.length;k++){const f=files[k],tag="("+(k+1)+" of "+files.length+") ";
+    try{const isVid=/^video\//.test(f.type)||/\.(mp4|mov|webm|m4v)$/i.test(f.name);
+      if(isVid){if(f.size>MAX_VIDEO_MB*1048576)throw new Error("“"+f.name+"” is larger than "+MAX_VIDEO_MB+" MB. Use a shorter video, or add a YouTube link instead.");
+        say(tag+"Preparing "+f.name+"…");const pb=await makePoster(f);let poster="";
+        if(pb)poster="m:"+await uploadFile(new File([pb],"poster.jpg",{type:"image/jpeg"}),"poster");
+        const id=await uploadFile(f,"video",p=>{say(tag+"Uploading video "+f.name+"…");prog(p)});
+        added.push({id:uid(),title:niceTitle(f.name,"New video"),kind:"video",src:"m:"+id,poster,pos:""})}
+      else{say(tag+"Preparing "+f.name+"…");const blob=await prepPhoto(f);
+        const id=await uploadFile(blob,"image",p=>{say(tag+"Uploading photo "+f.name+"…");prog(p)});
+        added.push({id:uid(),title:niceTitle(f.name,"New photo"),kind:"image",src:"m:"+id,poster:"",pos:""})}
+    }catch(e){failed.push(e.message||("“"+f.name+"” failed"))}}
+  return{added,failed}}
+function aMedia(b){
+  const fi=h("input",{type:"file",multiple:true,accept:"image/*,video/*"}),st=h("p",{class:"note",style:"min-height:1.4em"}),pb=h("div",{class:"hidden"},bar(0));
+  const go2=h("button",{class:"btn",onclick:()=>{const fs=[...fi.files];if(!fs.length)return toast("Choose at least one photo or video");
+    go2.disabled=true;pb.classList.remove("hidden");
+    w(async()=>{try{const{added,failed}=await addFiles(fs,t=>{st.textContent=t},p=>{pb.firstChild.firstChild.style.width=Math.round(p*100)+"%"});
+      if(added.length){MEDIA=MEDIA.concat(added);await saveMediaList();toast(added.length+" uploaded. Give them titles below.")}
+      if(failed.length)toast(failed.join(" "));}finally{go2.disabled=false;pb.classList.add("hidden");st.textContent=""}})}},"Upload");
+  const lt=inp("Title"),lu=inp("YouTube, Facebook or Vimeo link");
+  b.append(h("div",{class:"glass card"},h("h3",{},"Add photos and videos to Campus Life"),
+    h("p",{},"Choose photos or videos from your phone or computer. Photos can be JPG, PNG or WebP (big photos are shrunk automatically). Videos can be MP4, WebM or MOV up to "+MAX_VIDEO_MB+" MB. You can choose several files at once. They appear on the Campus Life page straight away."),
+    h("div",{class:"fr"},fi,go2),st,pb,
+    h("details",{style:"margin-top:12px;padding:8px 0;border:0;background:none"},h("summary",{},"Long video? Add a YouTube, Facebook or Vimeo link instead"),
+      h("div",{class:"fr",style:"margin-top:8px"},lt,lu,h("button",{class:"btn o",onclick:()=>{const u=lu.value.trim();if(!lt.value.trim()||!/^https:\/\//i.test(u))return toast("Add a title and a full https:// link");
+        MEDIA.push({id:uid(),title:lt.value.trim(),kind:"video",src:u,poster:"",pos:""});w(saveMediaList)}},"Add link")))));
+  if(!MEDIA.length){b.append(h("div",{class:"glass card",style:"margin-top:14px"},h("h3",{},"Built-in photos and videos"),
+    h("p",{},"The Campus Life page is showing the "+DEF_PHOTOS.length+" photos and "+DEF_VID.length+" videos that came with the site. To remove, rename or reorder them, load them into this list first. Anything you upload also replaces the built-ins, so do this first if you want to keep them."),
+    h("button",{class:"btn o",onclick:()=>{MEDIA=[...DEF_PHOTOS.map(x=>({id:uid(),title:x.title,kind:"image",src:x.src,poster:"",pos:x.pos||""})),...DEF_VID.map(x=>({id:uid(),title:x.title,kind:"video",src:x.url,poster:x.poster||"",pos:""}))];w(saveMediaList)}},"Load the built-in photos and videos into the list")));return}
+  const section=(kind,title)=>{const L=MEDIA.filter(x=>x.kind===kind);
+    b.append(h("h3",{style:"margin:22px 0 4px"},title+" ("+L.length+")"));
+    if(!L.length)b.append(h("p",{class:"note"},"None yet."));
+    L.forEach((it,i)=>{const ti=inp("Title");ti.value=it.title;
+      const th=kind==="image"?h("img",{class:"mthumb",src:mediaUrl(it.src),alt:"",loading:"lazy",style:it.pos?"object-position:"+it.pos:""}):(it.poster?h("img",{class:"mthumb",src:mediaUrl(it.poster),alt:"",loading:"lazy"}):h("div",{class:"mthumb",style:"display:grid;place-items:center;color:#fff"},"▶"));
+      const swap=d=>{const idx=MEDIA.indexOf(it),j=MEDIA.findIndex((x,k)=>k!==idx&&x.kind===kind&&(d<0?k<idx:k>idx)&&(d<0?true:true));
+        const others=MEDIA.map((x,k)=>x.kind===kind?k:-1).filter(k=>k>=0),pos=others.indexOf(idx),to=others[pos+d];if(to===undefined)return;[MEDIA[idx],MEDIA[to]]=[MEDIA[to],MEDIA[idx]];w(saveMediaList)};
+      const row=h("div",{class:"glass card",style:"margin-top:8px;padding:12px"},h("div",{class:"mrow"},th,h("div",{style:"flex:1;min-width:170px"},ti,
+          kind==="image"?(()=>{const fs=sel(["Crop: centre","Crop: top","Crop: bottom"]);fs.value=it.pos==="50% 15%"?"Crop: top":it.pos==="50% 85%"?"Crop: bottom":"Crop: centre";fs.style.marginTop="6px";fs.onchange=()=>{it.pos=fs.value==="Crop: top"?"50% 15%":fs.value==="Crop: bottom"?"50% 85%":"";w(saveMediaList)};return fs})():h("span",{class:"note"},it.src.startsWith("https://")?"Link":"Uploaded video")),
+        h("div",{class:"fr",style:"margin:0"},h("button",{class:"btn o",title:"Move up",onclick:()=>swap(-1)},"↑"),h("button",{class:"btn o",title:"Move down",onclick:()=>swap(1)},"↓"),
+          h("button",{class:"btn o",onclick:()=>{const v=ti.value.trim();if(!v)return toast("Type a title");it.title=v;w(saveMediaList)}},"Save title"),
+          delBtn(()=>{MEDIA=MEDIA.filter(x=>x.id!==it.id);return saveMediaList()}))));
+      b.append(row)})};
+  section("image","Photos");section("video","Videos")}
 
 // ---------- CSV helpers ----------
 function parseTable(text){text=String(text||"").replace(/^\uFEFF/,"");const first=text.split(/\r?\n/)[0]||"";
