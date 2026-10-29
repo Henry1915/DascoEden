@@ -5,9 +5,9 @@ import crypto from "node:crypto";
 
 export const config = { path: "/api/*" };
 
-const store = () => getStore("dasco-eden");
-const docsStore = () => getStore("dasco-eden-docs");
-const mediaStore = () => getStore("dasco-eden-media");
+const store = () => getStore({ name: "dasco-eden", consistency: "strong" });
+const docsStore = () => getStore({ name: "dasco-eden-docs", consistency: "strong" });
+const mediaStore = () => getStore({ name: "dasco-eden-media", consistency: "strong" });
 const SECRET = () => process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD || "change-me";
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const json = (d, s = 200) =>
